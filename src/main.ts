@@ -1,3 +1,4 @@
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import {
   FastifyAdapter,
@@ -10,7 +11,17 @@ async function bootstrap() {
     AppModule,
     new FastifyAdapter(),
   );
-  await app.listen(process.env.PORT ?? 3000);
-  console.log(`Servidor rodando na porta ${process.env.PORT ?? 3000}!`);
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
+
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port);
+  console.log(`Servidor rodando na porta ${port}!`);
 }
 void bootstrap();
