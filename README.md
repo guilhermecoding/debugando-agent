@@ -1,98 +1,191 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 🤖 Debugando Agent
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API NestJS que recebe o enunciado e a solução de um exercício e devolve uma resposta gerada por um modelo local via [Ollama](https://ollama.com).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+O único endpoint de negócio é `POST /tutor/assist`. A aplicação monta o prompt, chama `POST {OLLAMA_BASE_URL}/api/chat` e devolve o texto do modelo.
 
-## Description
+## Configuração inicial
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Pré-requisitos:
 
-## Project setup
+- [Node.js](https://nodejs.org) (versão atual LTS)
+- [pnpm](https://pnpm.io)
+- [Ollama](https://ollama.com/download) instalado e acessível na máquina
+
+Na raiz do repositório:
 
 ```bash
-$ pnpm install
+pnpm install
+cp .env.example .env
 ```
 
-## Compile and run the project
+Edite o `.env`. A aplicação recusa subir se `OLLAMA_MODEL` ou `OLLAMA_SYSTEM_PROMPT` estiverem vazios.
 
 ```bash
-# development
-$ pnpm run start
+PORT=3000
 
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2
+OLLAMA_SYSTEM_PROMPT="Você é um tutor de programação. Explique o exercício sem reescrever a solução inteira."
+OLLAMA_TEMPERATURE=0
+OLLAMA_TOP_P=0.1
+OLLAMA_TIMEOUT_MS=60000
 ```
 
-## Run tests
+| Variável | Obrigatória | Padrão | Uso |
+| --- | --- | --- | --- |
+| `PORT` | não | `3000` | Porta HTTP da API |
+| `OLLAMA_BASE_URL` | não | `http://localhost:11434` | URL do daemon do Ollama, sem barra no final |
+| `OLLAMA_MODEL` | sim | — | Nome do modelo já baixado no Ollama |
+| `OLLAMA_SYSTEM_PROMPT` | sim | — | Instrução de sistema enviada em toda chamada |
+| `OLLAMA_TEMPERATURE` | não | `0` | `temperature` das opções do chat |
+| `OLLAMA_TOP_P` | não | `0.1` | `top_p` das opções do chat |
+| `OLLAMA_TIMEOUT_MS` | não | `60000` | Tempo máximo, em milissegundos, da chamada ao Ollama |
+
+Valores numéricos inválidos também impedem a inicialização. O arquivo `.env` não entra no git.
+
+## Rodar o modelo
+
+O nome em `OLLAMA_MODEL` precisa existir localmente antes da primeira chamada.
+
+1. Inicie o daemon. No Linux ele costuma subir como serviço; se a porta `11434` não responder, rode:
 
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+ollama serve
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+2. Baixe o mesmo modelo configurado no `.env`:
 
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+ollama pull llama3.2
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+3. Confira se o daemon enxerga o modelo:
 
-## Resources
+```bash
+curl http://localhost:11434/api/tags
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+A lista em `models` deve incluir o nome usado em `OLLAMA_MODEL` (por exemplo `llama3.2`).
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## Subir a API
 
-## Support
+```bash
+# desenvolvimento, com reload
+pnpm start:dev
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+# uma execução
+pnpm start
 
-## Stay in touch
+# build e execução do artefato
+pnpm build
+pnpm start:prod
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Com `PORT=3000`, a base é `http://localhost:3000`. O log esperado é `Servidor rodando na porta 3000!`.
 
-## License
+`GET /` responde o texto `Hello World!` e serve só para confirmar que o processo está no ar. Não depende do Ollama.
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+## `POST /tutor/assist`
+
+Envia o contexto de um exercício e recebe a resposta do modelo.
+
+`Content-Type: application/json`
+
+### Corpo da requisição
+
+Todos os campos são string não vazia. Espaços nas pontas são removidos antes de montar o prompt. Campo desconhecido é rejeitado.
+
+| Campo | Descrição |
+| --- | --- |
+| `level` | Nível do exercício |
+| `structureType` | Estrutura ou assunto (por exemplo `for`, `array`) |
+| `statement` | Enunciado |
+| `solution` | Solução enviada pelo aluno |
+
+```json
+{
+  "level": "iniciante",
+  "structureType": "for",
+  "statement": "Imprima os números de 1 a 5",
+  "solution": "for (let i = 1; i <= 5; i++) console.log(i);"
+}
+```
+
+### Resposta de sucesso
+
+`200 OK`
+
+```json
+{
+  "reply": "O laço começa em 1 e para quando i passa de 5. Cada volta imprime o valor atual de i.",
+  "model": "llama3.2"
+}
+```
+
+| Campo | Descrição |
+| --- | --- |
+| `reply` | Texto devolvido pelo modelo |
+| `model` | Nome do modelo que gerou a resposta |
+
+O texto de `reply` varia a cada execução. `model` acompanha o valor configurado em `OLLAMA_MODEL`.
+
+### Erros
+
+Validação (`400 Bad Request`). `message` é uma lista das regras que falharam:
+
+```json
+{
+  "statusCode": 400,
+  "message": [
+    "level should not be empty",
+    "statement must be a string"
+  ],
+  "error": "Bad Request"
+}
+```
+
+Ollama indisponível, modelo ausente ou resposta vazia (`503 Service Unavailable`):
+
+```json
+{
+  "statusCode": 503,
+  "message": "Unable to reach Ollama chat API",
+  "error": "Service Unavailable"
+}
+```
+
+`message` também pode ser `Ollama request failed with status <código>` ou `Ollama returned an empty or invalid chat response`.
+
+## Chamada com curl
+
+```bash
+curl -s -X POST http://localhost:3000/tutor/assist \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "level": "iniciante",
+    "structureType": "for",
+    "statement": "Imprima os números de 1 a 5",
+    "solution": "for (let i = 1; i <= 5; i++) console.log(i);"
+  }'
+```
+
+## Postman, Insomnia e Bruno
+
+1. Crie uma requisição `POST`.
+2. URL: `http://localhost:3000/tutor/assist`.
+3. Header: `Content-Type` = `application/json`.
+4. Body no formato raw / JSON, com os quatro campos do exemplo acima.
+5. Envie. O status esperado é `200` e o corpo tem `reply` e `model`.
+
+Para reproduzir o `400`, apague `solution` ou acrescente um campo que não existe no contrato, como `"extra": true`. Para reproduzir o `503`, pare o Ollama ou use um `OLLAMA_MODEL` que não foi baixado e reinicie a API.
+
+## Testes
+
+```bash
+pnpm test
+pnpm test:e2e
+pnpm test:cov
+```
+
+`pnpm test:e2e` sobe o `AppModule`, então o `.env` precisa ter `OLLAMA_MODEL` e `OLLAMA_SYSTEM_PROMPT` preenchidos. O e2e atual só cobre `GET /` e não chama o Ollama.
