@@ -103,6 +103,16 @@ pnpm start:prod
 
 `pnpm start:prod` roda `node dist/main`. Com `PORT=3000`, a base é `http://localhost:3000`. O log esperado é `Servidor rodando na porta 3000!`.
 
+## Docker
+
+A API e o Ollama sobem juntos. O Compose lê o `.env` da pasta do projeto. A imagem da API não inclui esse arquivo: ele é montado em `/app/.env` na subida. Fora do Docker, `OLLAMA_BASE_URL` continua `http://localhost:11434`. Dentro do Compose, a API usa `http://ollama:11434` para falar com o outro container. O Ollama do container não publica a porta `11434` no host, então não entra em conflito com um Ollama já instalado na máquina.
+
+```bash
+docker compose up --build
+```
+
+A primeira execução baixa o modelo de `OLLAMA_MODEL` para o volume `ollama-data`. As próximas reutilizam esse volume. A API fica em `http://localhost:3000` quando `PORT=3000`.
+
 `GET /` responde o texto `Hello World!` e serve só para confirmar que o processo está no ar. Não depende do Ollama.
 
 ## `POST /tutor/assist`
